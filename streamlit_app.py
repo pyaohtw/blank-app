@@ -50,7 +50,7 @@ else:
     # Process each stock
     for symbol, percentage in zip(stock_symbols, allocation_percentages):
         try:
-            stock_data = yf.download(symbol, start=start_date, end=end_date)
+            stock_data = yf.download(symbol, start=start_date, end=end_date, timeout=10)  # Increase timeout to 10 seconds
             if stock_data.empty:
                 st.warning(f"No data found for {symbol}. Skipping this stock.")
                 continue
