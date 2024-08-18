@@ -3,6 +3,18 @@ import pandas as pd
 import yfinance as yf
 import streamlit as st
 import matplotlib.pyplot as plt
+import time
+
+def download_with_retries(symbol, start_date, end_date, max_retries=5, base_delay=2):
+    for attempt in range(max_retries):
+        try:
+            stock_data = yf.download(symbol, start=start_date, end=end_date, timeout=30)  # Adjust timeout as needed
+            return stock_data
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise e
+            delay = base_delay * 2**attempt
+            time.sleep(delay)
 
 # Title
 st.title("Multi-Stock Investment Backtesting App")
@@ -50,11 +62,11 @@ else:
     # Process each stock
     for symbol, percentage in zip(stock_symbols, allocation_percentages):
         try:
-            stock_data = yf.download(symbol, start=start_date, end=end_date, timeout=10)  # Increase timeout to 10 seconds
+            stock_data = download_with_retries(symbol, start_date, end_date)
             if stock_data.empty:
-                st.warning(f"No data found for {symbol}. Skipping this stock.")
+                st.warning(f"No data found for {symbol}.")
                 continue
-            
+
             stock_resampled = stock_data['Close'].resample(resample_frequency).last().dropna()
             stock_purchases = (percentage / 100 * investment_amount) / stock_resampled
 
