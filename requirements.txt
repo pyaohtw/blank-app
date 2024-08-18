@@ -1,9 +1,7 @@
-streamlit
-yfinance
-matplotlib
-pandas
-requests
-numpy
-lxml
-html5lib
-beautifulsoup4
+yfinance==0.2.0
+pandas==2.0.3
+requests==2.28.1
+numpy==1.24.2
+lxml==4.9.2
+html5lib==1.1
+beautifulsoup4==4.12.2
