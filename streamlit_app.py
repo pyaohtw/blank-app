@@ -41,10 +41,11 @@ else:
     
     # Process each stock
     for symbol, percentage in zip(stock_symbols, allocation_percentages):
-        stock_data = yf.download(symbol, start=start_date, end=end_date, progress=False)
+    try:
+        stock_data = yf.download(symbol, start=start_date, end=end_date)
+        # Further processing for each symbol...
     except Exception as e:
         st.error(f"Failed to download data for {symbol}: {e}")
-    continue
         stock_resampled = stock_data['Close'].resample(frequency_options[investment_frequency]).last().dropna()
         stock_purchases = (percentage / 100 * investment_amount) / stock_resampled
         
