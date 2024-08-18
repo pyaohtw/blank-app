@@ -64,7 +64,10 @@ else:
         try:
             stock_data = download_with_retries(symbol, start_date, end_date)
             if stock_data.empty:
-                st.warning(f"No data found for {symbol}.")
+                if symbol == "qqq":
+                    st.warning(f"No data found for {symbol}. Consider alternative data source or retry later.")
+                else:
+                    st.warning(f"No data found for {symbol}.")
                 continue
 
             stock_resampled = stock_data['Close'].resample(resample_frequency).last().dropna()
@@ -76,7 +79,10 @@ else:
             accumulated_value = stock_purchases.cumsum() * stock_resampled
             total_portfolio_value = total_portfolio_value.add(accumulated_value, fill_value=0)
         except Exception as e:
-            st.error(f"Failed to download data for {symbol}: {e}")
+            if symbol == "qqq":
+                st.error(f"Persistent error for {symbol}: {e}. Check Yahoo Finance status or try a different data source.")
+            else:
+                st.error(f"Failed to download data for {symbol}: {e}")
 
     # Display final portfolio value and returns
     if not total_portfolio_value.empty:
