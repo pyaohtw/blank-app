@@ -1,4 +1,9 @@
-pandas
-yfinance
 streamlit
+yfinance
 matplotlib
+pandas
+requests
+numpy
+lxml
+html5lib
+beautifulsoup4
