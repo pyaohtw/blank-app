@@ -1,34 +1,26 @@
-import streamlit as st
 import yfinance as yf
-import logging
-from datetime import datetime
+import streamlit as st
 
-# Set up basic logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()  # This will send logs to the Streamlit interface
-    ]
-)
-
-# Optional: Write logs to a file
-logger = logging.getLogger()
-file_handler = logging.FileHandler('app.log')
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logger.addHandler(file_handler)
-
+# Streamlit app title
 st.title("Simple Stock Price Fetcher")
 
-symbol = st.text_input("Enter a stock symbol:", "AAPL")
-start_date = st.date_input("Start date:", datetime(2022, 1, 1))
-end_date = st.date_input("End date:", datetime(2022, 12, 31))
+# Input field for the stock symbol
+symbol = st.text_input("Enter the stock symbol:", value="AAPL").upper()
 
-if st.button("Get Stock Data"):
+# Button to fetch the latest stock price
+if st.button("Fetch Latest Price"):
     try:
-        logger.info(f"Fetching data for {symbol} from {start_date} to {end_date}")
-        stock_data = yf.download(symbol, start=start_date, end=end_date)
-        st.write(stock_data)
+        stock = yf.Ticker(symbol)
+        stock_info = stock.history(period="1d")  # Get the last day's data
+
+        if not stock_info.empty:
+            latest_price = stock_info['Close'].iloc[-1]  # Get the last closing price
+            st.success(f"The latest closing price for {symbol} is: ${latest_price:.2f}")
+        else:
+            st.warning(f"No data available for symbol: {symbol}")
+
     except Exception as e:
-        logger.error(f"Error fetching data: {e}")
-        st.error(f"Error fetching data: {e}")
+        st.error(f"Error fetching data for {symbol}: {e}")
+
+# Additional info (optional)
+st.write("Enter a valid stock symbol and click 'Fetch Latest Price' to see the latest closing price.")
