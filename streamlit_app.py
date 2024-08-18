@@ -4,18 +4,19 @@ import yfinance as yf
 import streamlit as st
 import matplotlib.pyplot as plt
 import time
+import random
 
 def download_with_retries(symbol, start_date, end_date, max_retries=5, base_delay=2):
     for attempt in range(max_retries):
         try:
             st.write(f"Attempting to download {symbol} data, attempt {attempt + 1}")
-            stock_data = yf.download(symbol, start=start_date, end=end_date, timeout=60)  # Increased timeout
+            stock_data = yf.download(symbol, start=start_date, end=end_date, timeout=120)  # Increased timeout
             return stock_data
         except Exception as e:
             st.error(f"Error downloading {symbol}: {e}. Retrying in {base_delay * 2**attempt} seconds...")
             if attempt == max_retries - 1:
                 raise e
-            delay = base_delay * 2**attempt
+            delay = base_delay * 2**attempt + random.uniform(0, base_delay)  # Randomized delay
             time.sleep(delay)
 
 # Title
