@@ -1,26 +1,34 @@
 import yfinance as yf
 import streamlit as st
+import time
 
-# Streamlit app title
-st.title("Simple Stock Price Fetcher")
+def download_with_retries(symbol, start_date, end_date, max_retries=5, base_delay=2):
+    for attempt in range(max_retries):
+        try:
+            st.write(f"Attempting to download data for {symbol} (Attempt {attempt + 1})...")
+            stock_data = yf.download(symbol, start=start_date, end=end_date, timeout=60)  # Increase timeout
+            return stock_data
+        except Exception as e:
+            st.error(f"Error downloading {symbol}: {e}")
+            if attempt == max_retries - 1:
+                raise e
+            delay = base_delay * 2 ** attempt
+            st.write(f"Retrying in {delay} seconds...")
+            time.sleep(delay)
 
-# Input field for the stock symbol
-symbol = st.text_input("Enter the stock symbol:", value="AAPL").upper()
+# Simplified for one stock symbol
+st.title("Debugging Multi-Stock Investment Backtesting")
 
-# Button to fetch the latest stock price
-if st.button("Fetch Latest Price"):
+symbol = st.text_input("Enter Stock Symbol", "AAPL")
+years_to_invest = 2
+
+if st.button("Start Backtest"):
+    end_date = datetime.datetime.now()
+    start_date = end_date - datetime.timedelta(weeks=years_to_invest * 52)
+
     try:
-        stock = yf.Ticker(symbol)
-        stock_info = stock.history(period="1d")  # Get the last day's data
-
-        if not stock_info.empty:
-            latest_price = stock_info['Close'].iloc[-1]  # Get the last closing price
-            st.success(f"The latest closing price for {symbol} is: ${latest_price:.2f}")
-        else:
-            st.warning(f"No data available for symbol: {symbol}")
-
+        stock_data = download_with_retries(symbol, start_date, end_date)
+        st.write(f"Data fetched for {symbol}:")
+        st.write(stock_data.head())
     except Exception as e:
-        st.error(f"Error fetching data for {symbol}: {e}")
-
-# Additional info (optional)
-st.write("Enter a valid stock symbol and click 'Fetch Latest Price' to see the latest closing price.")
+        st.error(f"Failed after multiple attempts: {e}")
