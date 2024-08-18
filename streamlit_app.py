@@ -41,20 +41,19 @@ else:
     
     # Process each stock
     for symbol, percentage in zip(stock_symbols, allocation_percentages):
-    try:
-        stock_data = yf.download(symbol, start=start_date, end=end_date)
-        # Further processing for each symbol...
-    except Exception as e:
-        st.error(f"Failed to download data for {symbol}: {e}")
-        stock_resampled = stock_data['Close'].resample(frequency_options[investment_frequency]).last().dropna()
-        stock_purchases = (percentage / 100 * investment_amount) / stock_resampled
-        
-        initial_purchase = (percentage / 100 * initial_investment) / stock_resampled.iloc[0]
-        stock_purchases.iloc[0] += initial_purchase
-        
-        total_cost = percentage / 100 * (initial_investment + investment_amount * (len(stock_purchases) - 1))
-        accumulated_value = stock_purchases.cumsum() * stock_resampled
-        total_portfolio_value = total_portfolio_value.add(accumulated_value, fill_value=0)
+        try:
+            stock_data = yf.download(symbol, start=start_date, end=end_date)
+            stock_resampled = stock_data['Close'].resample(resample_frequency).last().dropna()
+            stock_purchases = (percentage / 100 * investment_amount) / stock_resampled
+
+            initial_purchase = (percentage / 100 * initial_investment) / stock_resampled.iloc[0]
+            stock_purchases.iloc[0] += initial_purchase
+
+            total_cost = percentage / 100 * (initial_investment + investment_amount * (len(stock_purchases) - 1))
+            accumulated_value = stock_purchases.cumsum() * stock_resampled
+            total_portfolio_value = total_portfolio_value.add(accumulated_value, fill_value=0)
+        except Exception as e:
+            st.error(f"Failed to download data for {symbol}: {e}")
 
     # Display final portfolio value and returns
     total_value = total_portfolio_value.iloc[-1]
