@@ -5,85 +5,70 @@ import streamlit as st
 import matplotlib.pyplot as plt
 
 # Title
-st.title("Multi-Stock Investment Backtesting App")
+st.title("Single Stock Investment Backtesting with Expense Deduction")
 
 # User inputs
 years_to_invest = st.slider("Select the number of years to backtest", 1, 30, 2)
 initial_investment = st.number_input("Initial Investment Amount", value=1000)
-
-# Frequency selection for investments
 investment_frequency = st.selectbox("Select Investment Frequency", ["Daily", "Weekly", "Bi-Weekly", "Monthly"], index=2)
 investment_amount = st.number_input(f"{investment_frequency} Investment Amount", value=50)
+annual_expense_ratio = st.number_input("Annual ETF Expense Ratio (%)", min_value=0.0, max_value=10.0, value=0.5)
 
-# Stock symbol inputs
-st.write("### Enter up to 5 stock symbols and their respective allocation percentages:")
-stock_symbols = []
-allocation_percentages = []
+# Stock symbol input
+stock_symbol = st.text_input("Stock Symbol", value="AAPL")
 
-for i in range(1, 6):
-    col1, col2 = st.columns([2, 1])
-    symbol = col1.text_input(f"Stock Symbol {i}", value="")
-    percentage = col2.number_input(f"Allocation % {i}", min_value=0, max_value=100, value=0)
-
-    if symbol and percentage > 0:
-        stock_symbols.append(symbol)
-        allocation_percentages.append(percentage)
-
-# Ensure the total allocation is 100%
-if sum(allocation_percentages) != 100:
-    st.error("The total allocation percentage must equal 100%.")
-else:
+# Ensure valid stock symbol
+if stock_symbol:
     end_date = datetime.datetime.now()
     start_date = end_date - datetime.timedelta(weeks=years_to_invest * 52)
 
-    total_portfolio_value = pd.Series(dtype=float)
+    # Download stock data
+    stock_data = yf.download(stock_symbol, start=start_date, end=end_date)
 
-    # Determine resampling frequency based on user selection
-    resample_map = {
-        "Daily": 'D',
-        "Weekly": 'W',
-        "Bi-Weekly": '2W',
-        "Monthly": 'M'
-    }
-    resample_frequency = resample_map[investment_frequency]
+    if not stock_data.empty:
+        # Resampling frequency mapping
+        resample_map = {"Daily": 'D', "Weekly": 'W', "Bi-Weekly": '2W', "Monthly": 'M'}
+        resample_frequency = resample_map[investment_frequency]
 
-    # Process each stock
-    for symbol, percentage in zip(stock_symbols, allocation_percentages):
-        try:
-            stock_data = yf.download(symbol, start=start_date, end=end_date)
-            if stock_data.empty:
-                st.warning(f"No data found for {symbol}. Skipping this stock.")
-                continue
-            
-            stock_resampled = stock_data['Close'].resample(resample_frequency).last().dropna()
-            stock_purchases = (percentage / 100 * investment_amount) / stock_resampled
+        # Resample and process stock data
+        stock_resampled = stock_data['Close'].resample(resample_frequency).last().dropna()
+        stock_purchases = investment_amount / stock_resampled
+        initial_purchase = initial_investment / stock_resampled.iloc[0]
+        stock_purchases.iloc[0] += initial_purchase
+        accumulated_value = stock_purchases.cumsum() * stock_resampled
 
-            initial_purchase = (percentage / 100 * initial_investment) / stock_resampled.iloc[0]
-            stock_purchases.iloc[0] += initial_purchase
+        # Deduct annual expense from accumulated value at each year mark
+        for i in range(1, years_to_invest + 1):
+            year_end_index = i * 12  # Adjust for monthly data; modify if frequency is different
+            if year_end_index < len(accumulated_value):
+                expense_factor = (1 - annual_expense_ratio / 100) ** i  # Compound effect for each year
+                accumulated_value.iloc[year_end_index:] *= expense_factor  # Apply expense deduction
 
-            accumulated_value = stock_purchases.cumsum() * stock_resampled
-            total_portfolio_value = total_portfolio_value.add(accumulated_value, fill_value=0)
-        except Exception as e:
-            st.error(f"Failed to download data for {symbol}: {e}")
+        # Extract the final scalar value of the accumulated portfolio
+        final_value = accumulated_value.iloc[-1]
 
-    # Display final portfolio value and returns
-    if not total_portfolio_value.empty:
-        total_value = total_portfolio_value.iloc[-1]
-        total_return = total_value - initial_investment - investment_amount * (len(stock_purchases) - 1)
-        total_return_rate = (total_return / (initial_investment + investment_amount * (len(stock_purchases) - 1))) * 100
+        # Ensure that final_value is a scalar and format it
+        final_value = final_value.item()  # This ensures it's a scalar (not a Series)
 
-        st.write(f"Total Value: ${total_value:.2f}")
+
+        # Calculate total invested and return
+        total_invested = initial_investment + investment_amount * (len(stock_purchases) - 1)
+        total_return = final_value - total_invested
+        total_return_rate = (total_return / total_invested) * 100
+
+        # Display results
+        st.write(f"Final Value: ${final_value:.2f}")
         st.write(f"Total Return: ${total_return:.2f}")
         st.write(f"Total Return Rate: {total_return_rate:.2f}%")
 
-        # Plot the portfolio growth over time
-        st.write("### Growth of Portfolio Over Time")
+        # Plot portfolio growth over time
+        st.write("### Growth of Investment Portfolio Over Time")
         plt.figure(figsize=(10, 6))
-        plt.plot(total_portfolio_value.index, total_portfolio_value.values, label='Portfolio Value')
+        plt.plot(accumulated_value.index, accumulated_value.values, label='Portfolio Value')
         plt.xlabel('Time')
         plt.ylabel('Value ($)')
-        plt.title('Growth of Investment Portfolio')
+        plt.title('Growth of Investment Portfolio with Annual Expense Deduction')
         plt.legend()
         st.pyplot(plt)
     else:
-        st.warning("No valid data available to display the portfolio growth.")
+        st.warning("No data found for the stock symbol provided.")
